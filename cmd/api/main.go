@@ -2,18 +2,23 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/gin-gonic/gin"
+	"github.com/omarhaqqi24/marketplace-api/internal/auth"
 	"github.com/omarhaqqi24/marketplace-api/internal/config"
 	"github.com/omarhaqqi24/marketplace-api/internal/database"
 )
 
 func main() {
 	cfg := config.Load()
-	db := database.Connect(cfg)
 	router := gin.Default()
+	db := database.Connect(cfg)
 
-	_ = db
+	err := db.AutoMigrate(&auth.User{})
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
