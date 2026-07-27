@@ -20,6 +20,12 @@ func main() {
 		log.Fatal(err)
 	}
 
+	repo := auth.NewUserRepository(db)
+	service := auth.NewService(repo)
+	handler := auth.NewHandler(service)
+
+	router.POST("/register", handler.Register)
+
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"app":    cfg.AppName,

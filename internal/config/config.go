@@ -17,13 +17,16 @@ type Config struct {
 	DBPassword string
 	DBName     string
 	DBSSLMode  string
+
+	JWTSecret string
+	JWTExpire string
 }
 
 func Load() *Config {
 	viper.SetConfigFile(".env")
 
 	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalf("Failed to load config file: $v", err)
+		log.Fatalf("Failed to load config file: %v", err)
 	}
 
 	return &Config{
@@ -37,5 +40,8 @@ func Load() *Config {
 		DBPassword: viper.GetString("DB_PASSWORD"),
 		DBName:     viper.GetString("DB_NAME"),
 		DBSSLMode:  viper.GetString("DB_SSLMODE"),
+
+		JWTSecret: viper.GetString("JWT_SECRET"),
+		JWTExpire: viper.GetString("JWT_EXPIRE"),
 	}
 }

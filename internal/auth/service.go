@@ -4,10 +4,12 @@ import (
 	"errors"
 
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type Service interface {
 	Register(req RegisterRequest) (*User, error)
+	Login(req LoginRequest) (*User, error)
 }
 
 type service struct {
@@ -22,8 +24,15 @@ func NewService(repo UserRepository) Service {
 
 func (s *service) Register(req RegisterRequest) (*User, error) {
 	_, err := s.repo.FindByEmail(req.Email)
+
+	// Jika email sudah terdaftar
 	if err == nil {
-		return nil, errors.New("Email already registered")
+		return nil, errors.New("email already registered")
+	}
+
+	// Jika ada error tapi bukan error record not found. Contoh: masalah koneksi database
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
 	}
 
 	hash, err := bcrypt.GenerateFromPassword(
@@ -43,6 +52,29 @@ func (s *service) Register(req RegisterRequest) (*User, error) {
 
 	if err := s.repo.Create(user); err != nil {
 		return nil, err
+	}
+
+	return user, nil
+}
+
+func (s *service) Login(req LoginRequest) (*User, error) {
+	user, err := s.repo.FindByEmail(req.Email)
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrInvalidCredentials
+		}
+
+		return nil, err
+	}
+
+	err = bcrypt.CompareHashAndPassword(
+		[]byte(user.PasswordHash),
+		[]byte(req.Password),
+	)
+
+	if err != nil {
+		return nil, ErrInvalidCredentials
 	}
 
 	return user, nil
