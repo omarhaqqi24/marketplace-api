@@ -21,7 +21,7 @@ func main() {
 	}
 
 	repo := auth.NewUserRepository(db)
-	service := auth.NewService(repo)
+	service := auth.NewService(repo, cfg)
 	handler := auth.NewHandler(service)
 
 	router.POST("/register", handler.Register)

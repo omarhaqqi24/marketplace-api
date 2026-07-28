@@ -2,23 +2,28 @@ package auth
 
 import (
 	"errors"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/omarhaqqi24/marketplace-api/internal/config"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 type Service interface {
 	Register(req RegisterRequest) (*User, error)
-	Login(req LoginRequest) (*User, error)
+	Login(req LoginRequest) (string, error)
 }
 
 type service struct {
 	repo UserRepository
+	cfg  *config.Config
 }
 
-func NewService(repo UserRepository) Service {
+func NewService(repo UserRepository, cfg *config.Config) Service {
 	return &service{
 		repo: repo,
+		cfg:  cfg,
 	}
 }
 
@@ -57,15 +62,15 @@ func (s *service) Register(req RegisterRequest) (*User, error) {
 	return user, nil
 }
 
-func (s *service) Login(req LoginRequest) (*User, error) {
+func (s *service) Login(req LoginRequest) (string, error) {
 	user, err := s.repo.FindByEmail(req.Email)
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrInvalidCredentials
+			return "", ErrInvalidCredentials
 		}
 
-		return nil, err
+		return "", err
 	}
 
 	err = bcrypt.CompareHashAndPassword(
@@ -74,8 +79,24 @@ func (s *service) Login(req LoginRequest) (*User, error) {
 	)
 
 	if err != nil {
-		return nil, ErrInvalidCredentials
+		return "", ErrInvalidCredentials
 	}
 
-	return user, nil
+	return GenerateToken(user, s.cfg.JWTSecret)
+}
+
+func GenerateToken(user *User, secret string) (string, error) {
+	claims := Claims{
+		UserID: user.ID.String(),
+		Role:   user.Role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Subject:   user.ID.String(),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	return token.SignedString([]byte(secret))
 }
