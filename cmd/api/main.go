@@ -8,6 +8,7 @@ import (
 	"github.com/omarhaqqi24/marketplace-api/internal/auth"
 	"github.com/omarhaqqi24/marketplace-api/internal/config"
 	"github.com/omarhaqqi24/marketplace-api/internal/database"
+	"github.com/omarhaqqi24/marketplace-api/internal/product"
 )
 
 func main() {
@@ -15,16 +16,22 @@ func main() {
 	router := gin.Default()
 	db := database.Connect(cfg)
 
-	err := db.AutoMigrate(&auth.User{})
+	err := db.AutoMigrate(
+		&auth.User{},
+		&product.Product{},
+	)
+
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	repo := auth.NewUserRepository(db)
-	service := auth.NewService(repo, cfg)
-	handler := auth.NewHandler(service)
+	authRepo := auth.NewUserRepository(db)
+	authService := auth.NewService(authRepo, cfg)
+	authHandler := auth.NewHandler(authService)
 
-	router.POST("/register", handler.Register)
+	productRepo := product.NewProductRepository(db)
+	productService := product.NewService(productRepo)
+	productHandler := product.NewHandler(productService)
 
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -33,6 +40,9 @@ func main() {
 			"status": "ok",
 		})
 	})
+
+	auth.RegisterRoutes(router, authHandler)
+	product.RegisterRoutes(router, productHandler, auth.AuthMiddleware(cfg.JWTSecret))
 
 	fmt.Println("App is running on port", cfg.AppPort)
 	router.Run(":" + cfg.AppPort)

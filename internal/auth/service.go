@@ -2,9 +2,7 @@ package auth
 
 import (
 	"errors"
-	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/omarhaqqi24/marketplace-api/internal/config"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -83,20 +81,4 @@ func (s *service) Login(req LoginRequest) (string, error) {
 	}
 
 	return GenerateToken(user, s.cfg.JWTSecret)
-}
-
-func GenerateToken(user *User, secret string) (string, error) {
-	claims := Claims{
-		UserID: user.ID.String(),
-		Role:   user.Role,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			Subject:   user.ID.String(),
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	return token.SignedString([]byte(secret))
 }
