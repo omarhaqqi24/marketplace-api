@@ -2,7 +2,6 @@ package product
 
 import (
 	"errors"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +13,8 @@ type Handler interface {
 	Create(c *gin.Context)
 	List(c *gin.Context)
 	Get(c *gin.Context)
+	Update(c *gin.Context)
+	Delete(c *gin.Context)
 }
 
 type handler struct {
@@ -31,7 +32,7 @@ func (h *handler) Create(c *gin.Context) {
 
 	err := c.ShouldBindJSON(&req)
 
-	log.Printf("%+v\n", req)
+	// log.Printf("%+v\n", req)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -145,5 +146,108 @@ func (h *handler) Get(c *gin.Context) {
 			Price:       product.Price,
 			Stock:       product.Stock,
 		},
+	})
+}
+
+func (h *handler) Update(c *gin.Context) {
+	var req UpdateProductRequest
+
+	idStr := c.Param("id")
+	id, err := uuid.Parse(idStr)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "invalid product id",
+		})
+		return
+	}
+
+	sellerID, err := uuid.Parse(c.MustGet("claims").(*auth.Claims).UserID)
+
+	if err != nil {
+		c.JSON(http.StatusForbidden, gin.H{
+			"success": false,
+			"message": "invalid user id in token",
+		})
+		return
+	}
+
+	err = c.ShouldBindJSON(&req)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	product, err := h.service.Update(id, sellerID, req)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "product updated successfully",
+		"data": ProductResponse{
+			ID:          product.ID,
+			Name:        product.Name,
+			Description: product.Description,
+			Price:       product.Price,
+			Stock:       product.Stock,
+		},
+	})
+}
+
+func (h *handler) Delete(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := uuid.Parse(idStr)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "invalid product id",
+		})
+		return
+	}
+
+	userID, err := uuid.Parse(c.MustGet("claims").(*auth.Claims).UserID)
+
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "invalid user id in token",
+		})
+		return
+	}
+
+	err = h.service.Delete(id, userID)
+
+	if err != nil {
+		if errors.Is(err, ErrForbiddenAccess) {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "product delete successfully",
 	})
 }

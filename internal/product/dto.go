@@ -1,6 +1,8 @@
 package product
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+)
 
 type CreateProductRequest struct {
 	Name        string `json:"name" binding:"required"`
@@ -15,4 +17,11 @@ type ProductResponse struct {
 	Description string    `json:"description"`
 	Price       int64     `json:"price"`
 	Stock       int       `json:"stock"`
+}
+
+type UpdateProductRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Price       int64  `json:"price"`
+	Stock       int    `json:"stock"`
 }

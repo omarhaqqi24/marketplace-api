@@ -11,6 +11,8 @@ type ProductRepository interface {
 	Create(product *Product) error
 	FindAll() ([]Product, error)
 	FindByID(id uuid.UUID) (*Product, error)
+	Update(product *Product) error
+	Delete(id uuid.UUID) error
 }
 
 type repository struct {
@@ -45,4 +47,17 @@ func (r *repository) FindByID(id uuid.UUID) (*Product, error) {
 	}
 
 	return product, err
+}
+
+func (r *repository) Update(product *Product) error {
+	return r.db.Model(product).Updates(map[string]any{
+		"name":        product.Name,
+		"description": product.Description,
+		"price":       product.Price,
+		"stock":       product.Stock,
+	}).Error
+}
+
+func (r *repository) Delete(id uuid.UUID) error {
+	return r.db.Delete(&Product{}, "id = ?", id).Error
 }
